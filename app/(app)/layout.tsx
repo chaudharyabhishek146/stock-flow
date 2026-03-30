@@ -1,22 +1,14 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
+import { getOrgSettings } from '@/lib/data';
 import { logout } from '@/app/actions/auth';
-import getDb from '@/lib/db';
-
-async function getOrgName(orgId: number): Promise<string> {
-  const db = getDb();
-  const org = db
-    .prepare('SELECT name FROM organizations WHERE id = ?')
-    .get(orgId) as { name: string } | undefined;
-  return org?.name ?? 'My Organization';
-}
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) redirect('/login');
 
-  const orgName = await getOrgName(session.orgId);
+  const { name: orgName } = getOrgSettings(session.orgId);
 
   return (
     <div className="min-h-screen flex bg-gray-50">

@@ -1,50 +1,14 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
-import getDb from '@/lib/db';
-
-type Product = {
-  id: number;
-  name: string;
-  sku: string;
-  quantity: number;
-  low_stock_threshold: number | null;
-};
-
-type OrgSettings = {
-  default_low_stock_threshold: number;
-};
-
-async function getDashboardData(orgId: number) {
-  const db = getDb();
-
-  const settings = db
-    .prepare('SELECT default_low_stock_threshold FROM organizations WHERE id = ?')
-    .get(orgId) as OrgSettings;
-
-  const defaultThreshold = settings.default_low_stock_threshold;
-
-  const products = db
-    .prepare('SELECT id, name, sku, quantity, low_stock_threshold FROM products WHERE organization_id = ?')
-    .all(orgId) as Product[];
-
-  const totalProducts = products.length;
-  const totalQuantity = products.reduce((sum, p) => sum + p.quantity, 0);
-
-  const lowStockItems = products.filter((p) => {
-    const threshold = p.low_stock_threshold ?? defaultThreshold;
-    return p.quantity <= threshold;
-  });
-
-  return { totalProducts, totalQuantity, lowStockItems, defaultThreshold };
-}
+import { getDashboardData } from '@/lib/data';
 
 export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect('/login');
 
   const { totalProducts, totalQuantity, lowStockItems, defaultThreshold } =
-    await getDashboardData(session.orgId);
+    getDashboardData(session.orgId);
 
   return (
     <div>
