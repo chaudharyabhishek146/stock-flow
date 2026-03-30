@@ -18,6 +18,11 @@ export type OrgSettings = {
   default_low_stock_threshold: number;
 };
 
+// Converts a libsql Row (which has methods) into a plain serialisable object
+function toPlain<T>(row: unknown): T {
+  return JSON.parse(JSON.stringify(row)) as T;
+}
+
 // ─── Org ──────────────────────────────────────────────────────────────────────
 
 export async function getOrgSettings(orgId: number): Promise<OrgSettings> {
@@ -26,7 +31,7 @@ export async function getOrgSettings(orgId: number): Promise<OrgSettings> {
     sql: 'SELECT name, default_low_stock_threshold FROM organizations WHERE id = ?',
     args: [orgId],
   });
-  return result.rows[0] as unknown as OrgSettings;
+  return toPlain<OrgSettings>(result.rows[0]);
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -38,7 +43,7 @@ export async function getProducts(orgId: number): Promise<Product[]> {
           FROM products WHERE organization_id = ? ORDER BY name ASC`,
     args: [orgId],
   });
-  return result.rows as unknown as Product[];
+  return result.rows.map((r) => toPlain<Product>(r));
 }
 
 export async function getProductById(id: number, orgId: number): Promise<Product | undefined> {
@@ -48,7 +53,7 @@ export async function getProductById(id: number, orgId: number): Promise<Product
           FROM products WHERE id = ? AND organization_id = ?`,
     args: [id, orgId],
   });
-  return result.rows[0] ? (result.rows[0] as unknown as Product) : undefined;
+  return result.rows[0] ? toPlain<Product>(result.rows[0]) : undefined;
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────

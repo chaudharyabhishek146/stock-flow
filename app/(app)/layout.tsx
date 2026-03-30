@@ -13,7 +13,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-56 shrink-0 flex flex-col bg-white border-r border-gray-200">
+      <aside className="fixed top-0 left-0 h-screen w-56 flex flex-col bg-white border-r border-gray-200 z-10">
         <div className="px-5 py-5 border-b border-gray-100">
           <span className="text-base font-bold text-indigo-600">StockFlow</span>
           <p className="mt-0.5 text-xs text-gray-400 truncate">{orgName}</p>
@@ -34,15 +34,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </NavLink>
         </nav>
 
-        <div className="px-3 py-4 border-t border-gray-100">
+        <div className="px-3 py-6 border-t border-gray-100">
           <p className="px-2 mb-2 text-xs text-gray-400 truncate">{session.email}</p>
           <LogoutButton />
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-6 py-8">{children}</div>
+      {/* Main content — offset by sidebar width */}
+      <main className="flex-1 ml-56 overflow-y-auto min-h-screen">
+        <div className="px-6 py-8">{children}</div>
       </main>
     </div>
   );

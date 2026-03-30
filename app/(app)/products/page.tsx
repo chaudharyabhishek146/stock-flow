@@ -5,15 +5,19 @@ import { getProducts, getOrgSettings } from '@/lib/data';
 import DeleteButton from './DeleteButton';
 import AdjustStockForm from './AdjustStockForm';
 
+const PAGE_SIZE = 10;
+
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect('/login');
 
-  const { q } = await searchParams;
+  const { q, page: pageParam } = await searchParams;
+  const currentPage = Math.max(1, parseInt(pageParam ?? '1', 10));
+
   const [products, { default_low_stock_threshold: defaultThreshold }] = await Promise.all([
     getProducts(session.orgId),
     getOrgSettings(session.orgId),
@@ -26,6 +30,17 @@ export default async function ProductsPage({
           p.sku.toLowerCase().includes(q.toLowerCase())
       )
     : products;
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  function pageUrl(p: number) {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    params.set('page', String(p));
+    return `/products?${params.toString()}`;
+  }
 
   return (
     <div>
@@ -40,13 +55,11 @@ export default async function ProductsPage({
       </div>
 
       {/* Search */}
-      <form method="GET" className="mb-4">
+      <form method="GET" className="mb-2">
         <input
           name="q"
           defaultValue={q}
           placeholder="Search by name or SKU…"
-          // className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-
           className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
       </form>
@@ -57,60 +70,108 @@ export default async function ProductsPage({
             {q ? `No products match "${q}".` : 'No products yet. Add your first product.'}
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-              <tr>
-                <th className="px-5 py-3 text-left font-medium">Name</th>
-                <th className="px-5 py-3 text-left font-medium">SKU</th>
-                <th className="px-5 py-3 text-right font-medium">Qty</th>
-                <th className="px-5 py-3 text-right font-medium">Price</th>
-                <th className="px-5 py-3 text-center font-medium">Status</th>
-                <th className="px-5 py-3 text-right font-medium">Adjust Stock</th>
-                <th className="px-5 py-3 text-right font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map((p) => {
-                const threshold = p.low_stock_threshold ?? defaultThreshold;
-                const isLow = p.quantity <= threshold;
-                return (
-                  <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3 font-medium text-gray-900">{p.name}</td>
-                    <td className="px-5 py-3 font-mono text-xs text-gray-500">{p.sku}</td>
-                    <td className="px-5 py-3 text-right font-semibold text-gray-900">{p.quantity}</td>
-                    <td className="px-5 py-3 text-right text-gray-500">
-                      {p.selling_price != null ? `₹${p.selling_price.toLocaleString('en-IN')}` : '—'}
-                    </td>
-                    <td className="px-5 py-3 text-center">
-                      {isLow ? (
-                        <span className="inline-block text-xs font-medium bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-                          Low
-                        </span>
-                      ) : (
-                        <span className="inline-block text-xs font-medium bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                          OK
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <AdjustStockForm productId={p.id} currentQty={p.quantity} />
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <Link
-                          href={`/products/${p.id}/edit`}
-                          className="text-indigo-600 hover:text-indigo-800 font-medium"
-                        >
-                          Edit
-                        </Link>
-                        <DeleteButton productId={p.id} productName={p.name} />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <>
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                <tr>
+                  <th className="px-5 py-3 text-left font-medium">Name</th>
+                  <th className="px-5 py-3 text-left font-medium">SKU</th>
+                  <th className="px-5 py-3 text-right font-medium">Qty</th>
+                  <th className="px-5 py-3 text-right font-medium">Price</th>
+                  <th className="px-5 py-3 text-center font-medium">Status</th>
+                  <th className="px-5 py-3 text-right font-medium">Adjust Stock</th>
+                  <th className="px-5 py-3 text-right font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {paginated.map((p) => {
+                  const threshold = p.low_stock_threshold ?? defaultThreshold;
+                  const isLow = p.quantity <= threshold;
+                  return (
+                    <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3 font-medium text-gray-900">{p.name}</td>
+                      <td className="px-5 py-3 font-mono text-xs text-gray-500">{p.sku}</td>
+                      <td className="px-5 py-3 text-right font-semibold text-gray-900">{p.quantity}</td>
+                      <td className="px-5 py-3 text-right text-gray-500">
+                        {p.selling_price != null ? `₹${p.selling_price.toLocaleString('en-IN')}` : '—'}
+                      </td>
+                      <td className="px-5 py-3 text-center">
+                        {isLow ? (
+                          <span className="inline-block text-xs font-medium bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                            Low
+                          </span>
+                        ) : (
+                          <span className="inline-block text-xs font-medium bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                            OK
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <AdjustStockForm productId={p.id} currentQty={p.quantity} />
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <Link
+                            href={`/products/${p.id}/edit`}
+                            className="text-indigo-600 hover:text-indigo-800 font-medium"
+                          >
+                            Edit
+                          </Link>
+                          <DeleteButton productId={p.id} productName={p.name} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
+              <p className="text-xs text-gray-500">
+                Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length} products
+              </p>
+              <div className="flex items-center gap-1">
+                <Link
+                  href={pageUrl(safePage - 1)}
+                  aria-disabled={safePage === 1}
+                  className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${
+                    safePage === 1
+                      ? 'border-gray-200 text-gray-300 pointer-events-none'
+                      : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  ← Prev
+                </Link>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <Link
+                    key={p}
+                    href={pageUrl(p)}
+                    className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${
+                      p === safePage
+                        ? 'bg-indigo-600 border-indigo-600 text-white'
+                        : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {p}
+                  </Link>
+                ))}
+
+                <Link
+                  href={pageUrl(safePage + 1)}
+                  aria-disabled={safePage === totalPages}
+                  className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${
+                    safePage === totalPages
+                      ? 'border-gray-200 text-gray-300 pointer-events-none'
+                      : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  Next →
+                </Link>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

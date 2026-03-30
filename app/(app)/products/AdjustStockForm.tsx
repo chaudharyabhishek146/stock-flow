@@ -15,11 +15,13 @@ export default function AdjustStockForm({
 
   async function handleSubmit(e: React.BaseSyntheticEvent) {
     e.preventDefault();
+    // Store form ref before any await — currentTarget is nullified after the event returns
+    const formEl = e.currentTarget as HTMLFormElement;
+    const formData = new FormData(formEl);
+    const adjustment = formData.get('adjustment');
+
     setError('');
     setPending(true);
-
-    const form = new FormData(e.currentTarget as HTMLFormElement);
-    const adjustment = form.get('adjustment');
 
     const res = await fetch(`/api/products/${productId}/adjust`, {
       method: 'POST',
@@ -31,7 +33,7 @@ export default function AdjustStockForm({
     if (!res.ok) {
       setError(data.error || 'Failed to adjust stock.');
     } else {
-      (e.currentTarget as HTMLFormElement).reset();
+      formEl.reset();
       router.refresh();
     }
     setPending(false);
