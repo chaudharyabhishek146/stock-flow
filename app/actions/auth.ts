@@ -43,9 +43,8 @@ export async function signup(_prevState: ActionResult, formData: FormData): Prom
     return { orgId: org.id, userId: user.id };
   });
 
-  const { orgId, userId } = txn();
-  await createSession({ userId, orgId, email });
-  redirect('/dashboard');
+  txn();
+  redirect('/login');
 }
 
 export async function login(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
