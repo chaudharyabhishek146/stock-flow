@@ -1,34 +1,26 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import { createClient, type Client } from '@libsql/client';
 
-// Use DATABASE_PATH env var (absolute path) or fall back to project root.
-// In Next.js 16, process.cwd() is always the project root in Node.js server context.
-const DB_PATH = process.env.DATABASE_PATH
-  ? path.resolve(process.env.DATABASE_PATH)
-  : path.resolve(process.cwd(), 'stockflow.db');
+const globalWithDb = globalThis as typeof globalThis & {
+  _client?: Client;
+  _schemaReady?: boolean;
+};
 
-// Ensure the directory exists before opening the database
-const DB_DIR = path.dirname(DB_PATH);
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
-}
+function getClient(): Client {
+  if (!globalWithDb._client) {
+    const url =
+      process.env.TURSO_DATABASE_URL ??
+      `file:${process.env.DATABASE_PATH ?? './stockflow.db'}`;
 
-// Global singleton — survives hot-reloads in dev via globalThis
-const globalWithDb = globalThis as typeof globalThis & { _db?: Database.Database };
-
-function getDb(): Database.Database {
-  if (!globalWithDb._db) {
-    globalWithDb._db = new Database(DB_PATH);
-    globalWithDb._db.pragma('journal_mode = WAL');
-    globalWithDb._db.pragma('foreign_keys = ON');
-    initSchema(globalWithDb._db);
+    globalWithDb._client = createClient({
+      url,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
   }
-  return globalWithDb._db;
+  return globalWithDb._client;
 }
 
-function initSchema(db: Database.Database) {
-  db.exec(`
+async function initSchema(client: Client): Promise<void> {
+  await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS organizations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -61,4 +53,11 @@ function initSchema(db: Database.Database) {
   `);
 }
 
-export default getDb;
+export async function getDb(): Promise<Client> {
+  const client = getClient();
+  if (!globalWithDb._schemaReady) {
+    await initSchema(client);
+    globalWithDb._schemaReady = true;
+  }
+  return client;
+}

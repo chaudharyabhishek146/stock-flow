@@ -14,8 +14,10 @@ export default async function ProductsPage({
   if (!session) redirect('/login');
 
   const { q } = await searchParams;
-  const products = getProducts(session.orgId);
-  const { default_low_stock_threshold: defaultThreshold } = getOrgSettings(session.orgId);
+  const [products, { default_low_stock_threshold: defaultThreshold }] = await Promise.all([
+    getProducts(session.orgId),
+    getOrgSettings(session.orgId),
+  ]);
 
   const filtered = q
     ? products.filter(

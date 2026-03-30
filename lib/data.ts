@@ -1,4 +1,4 @@
-import getDb from '@/lib/db';
+import { getDb } from '@/lib/db';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,41 +20,46 @@ export type OrgSettings = {
 
 // ─── Org ──────────────────────────────────────────────────────────────────────
 
-export function getOrgSettings(orgId: number): OrgSettings {
-  const db = getDb();
-  return db
-    .prepare('SELECT name, default_low_stock_threshold FROM organizations WHERE id = ?')
-    .get(orgId) as OrgSettings;
+export async function getOrgSettings(orgId: number): Promise<OrgSettings> {
+  const db = await getDb();
+  const result = await db.execute({
+    sql: 'SELECT name, default_low_stock_threshold FROM organizations WHERE id = ?',
+    args: [orgId],
+  });
+  return result.rows[0] as unknown as OrgSettings;
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 
-export function getProducts(orgId: number): Product[] {
-  const db = getDb();
-  return db
-    .prepare(
-      `SELECT id, name, sku, description, quantity, cost_price, selling_price, low_stock_threshold
-       FROM products WHERE organization_id = ? ORDER BY name ASC`
-    )
-    .all(orgId) as Product[];
+export async function getProducts(orgId: number): Promise<Product[]> {
+  const db = await getDb();
+  const result = await db.execute({
+    sql: `SELECT id, name, sku, description, quantity, cost_price, selling_price, low_stock_threshold
+          FROM products WHERE organization_id = ? ORDER BY name ASC`,
+    args: [orgId],
+  });
+  return result.rows as unknown as Product[];
 }
 
-export function getProductById(id: number, orgId: number): Product | undefined {
-  const db = getDb();
-  return db
-    .prepare(
-      `SELECT id, name, sku, description, quantity, cost_price, selling_price, low_stock_threshold
-       FROM products WHERE id = ? AND organization_id = ?`
-    )
-    .get(id, orgId) as Product | undefined;
+export async function getProductById(id: number, orgId: number): Promise<Product | undefined> {
+  const db = await getDb();
+  const result = await db.execute({
+    sql: `SELECT id, name, sku, description, quantity, cost_price, selling_price, low_stock_threshold
+          FROM products WHERE id = ? AND organization_id = ?`,
+    args: [id, orgId],
+  });
+  return result.rows[0] ? (result.rows[0] as unknown as Product) : undefined;
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
-export function getDashboardData(orgId: number) {
-  const { default_low_stock_threshold: defaultThreshold } = getOrgSettings(orgId);
-  const products = getProducts(orgId);
+export async function getDashboardData(orgId: number) {
+  const [settings, products] = await Promise.all([
+    getOrgSettings(orgId),
+    getProducts(orgId),
+  ]);
 
+  const defaultThreshold = settings.default_low_stock_threshold;
   const totalProducts = products.length;
   const totalQuantity = products.reduce((sum, p) => sum + p.quantity, 0);
   const lowStockItems = products.filter(

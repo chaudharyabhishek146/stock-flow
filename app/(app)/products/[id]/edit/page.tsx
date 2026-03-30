@@ -12,7 +12,7 @@ export default async function EditProductPage({
   if (!session) redirect('/login');
 
   const { id } = await params;
-  const product = getProductById(parseInt(id, 10), session.orgId);
+  const product = await getProductById(parseInt(id, 10), session.orgId);
   if (!product) notFound();
 
   return <ProductForm product={product} title="Edit Product" />;

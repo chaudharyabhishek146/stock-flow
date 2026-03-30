@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import getDb from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { verifyPassword, createSession } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
@@ -10,10 +10,13 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Email and password are required.' }, { status: 400 });
   }
 
-  const db = getDb();
-  const user = db
-    .prepare('SELECT id, organization_id, password_hash FROM users WHERE email = ?')
-    .get(normalizedEmail) as
+  const db = await getDb();
+  const result = await db.execute({
+    sql: 'SELECT id, organization_id, password_hash FROM users WHERE email = ?',
+    args: [normalizedEmail],
+  });
+
+  const user = result.rows[0] as unknown as
     | { id: number; organization_id: number; password_hash: string }
     | undefined;
 
@@ -21,6 +24,6 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Invalid email or password.' }, { status: 401 });
   }
 
-  await createSession({ userId: user.id, orgId: user.organization_id, email: normalizedEmail });
+  await createSession({ userId: Number(user.id), orgId: Number(user.organization_id), email: normalizedEmail });
   return Response.json({ success: true });
 }

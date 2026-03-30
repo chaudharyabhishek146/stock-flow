@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import getDb from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
@@ -18,22 +18,28 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Passwords do not match.' }, { status: 400 });
   }
 
-  const db = getDb();
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
-  if (existing) {
+  const db = await getDb();
+
+  const existing = await db.execute({
+    sql: 'SELECT id FROM users WHERE email = ?',
+    args: [normalizedEmail],
+  });
+  if (existing.rows.length > 0) {
     return Response.json({ error: 'An account with this email already exists.' }, { status: 409 });
   }
 
   const passwordHash = await hashPassword(password);
-  const insertOrg = db.prepare('INSERT INTO organizations (name) VALUES (?) RETURNING id');
-  const insertUser = db.prepare(
-    'INSERT INTO users (organization_id, email, password_hash) VALUES (?, ?, ?)'
-  );
 
-  db.transaction(() => {
-    const org = insertOrg.get(trimmedOrg) as { id: number };
-    insertUser.run(org.id, normalizedEmail, passwordHash);
-  })();
+  const orgResult = await db.execute({
+    sql: 'INSERT INTO organizations (name) VALUES (?) RETURNING id',
+    args: [trimmedOrg],
+  });
+  const orgId = Number(orgResult.rows[0].id);
+
+  await db.execute({
+    sql: 'INSERT INTO users (organization_id, email, password_hash) VALUES (?, ?, ?)',
+    args: [orgId, normalizedEmail, passwordHash],
+  });
 
   return Response.json({ success: true }, { status: 201 });
 }

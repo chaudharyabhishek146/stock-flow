@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth';
-import getDb from '@/lib/db';
+import { getDb } from '@/lib/db';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -14,21 +14,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return Response.json({ error: 'Enter a non-zero adjustment value.' }, { status: 400 });
   }
 
-  const db = getDb();
-  const product = db
-    .prepare('SELECT id, quantity FROM products WHERE id = ? AND organization_id = ?')
-    .get(parseInt(id, 10), session.orgId) as { id: number; quantity: number } | undefined;
+  const db = await getDb();
+  const result = await db.execute({
+    sql: 'SELECT id, quantity FROM products WHERE id = ? AND organization_id = ?',
+    args: [parseInt(id, 10), session.orgId],
+  });
 
-  if (!product) return Response.json({ error: 'Product not found.' }, { status: 404 });
+  if (result.rows.length === 0) return Response.json({ error: 'Product not found.' }, { status: 404 });
 
-  const newQty = product.quantity + delta;
+  const row = result.rows[0] as unknown as { id: number; quantity: number };
+  const newQty = Number(row.quantity) + delta;
+
   if (newQty < 0) {
     return Response.json({ error: 'Quantity cannot go below zero.' }, { status: 400 });
   }
 
-  db.prepare(
-    `UPDATE products SET quantity = ?, updated_at = datetime('now') WHERE id = ? AND organization_id = ?`
-  ).run(newQty, product.id, session.orgId);
+  await db.execute({
+    sql: `UPDATE products SET quantity = ?, updated_at = datetime('now') WHERE id = ? AND organization_id = ?`,
+    args: [newQty, Number(row.id), session.orgId],
+  });
 
   return Response.json({ success: true, quantity: newQty });
 }

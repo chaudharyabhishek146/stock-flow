@@ -8,7 +8,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await getSession();
   if (!session) redirect('/login');
 
-  const { name: orgName } = getOrgSettings(session.orgId);
+  const { name: orgName } = await getOrgSettings(session.orgId);
 
   return (
     <div className="min-h-screen flex bg-gray-50">

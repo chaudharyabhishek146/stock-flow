@@ -8,7 +8,7 @@ export default async function DashboardPage() {
   if (!session) redirect('/login');
 
   const { totalProducts, totalQuantity, lowStockItems, defaultThreshold } =
-    getDashboardData(session.orgId);
+    await getDashboardData(session.orgId);
 
   return (
     <div>
