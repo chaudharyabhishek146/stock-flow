@@ -5,7 +5,8 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'stockflow-dev-secret-change-in-production'
 );
 
-const PUBLIC_PATHS = ['/login', '/signup'];
+// Paths that don't require authentication (pages + their API routes)
+const PUBLIC_PATHS = ['/login', '/signup', '/api/auth/login', '/api/auth/signup'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

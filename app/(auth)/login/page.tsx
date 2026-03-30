@@ -1,11 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
 
@@ -29,7 +27,7 @@ export default function LoginPage() {
       setError(data.error || 'Something went wrong.');
       setPending(false);
     } else {
-      router.push('/dashboard');
+      window.location.href = '/dashboard';
     }
   }
 

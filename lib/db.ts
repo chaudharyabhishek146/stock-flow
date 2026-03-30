@@ -1,18 +1,30 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 
-const DB_PATH = path.join(process.cwd(), 'stockflow.db');
+// Use DATABASE_PATH env var (absolute path) or fall back to project root.
+// In Next.js 16, process.cwd() is always the project root in Node.js server context.
+const DB_PATH = process.env.DATABASE_PATH
+  ? path.resolve(process.env.DATABASE_PATH)
+  : path.resolve(process.cwd(), 'stockflow.db');
 
-let db: Database.Database;
+// Ensure the directory exists before opening the database
+const DB_DIR = path.dirname(DB_PATH);
+if (!fs.existsSync(DB_DIR)) {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+}
+
+// Global singleton — survives hot-reloads in dev via globalThis
+const globalWithDb = globalThis as typeof globalThis & { _db?: Database.Database };
 
 function getDb(): Database.Database {
-  if (!db) {
-    db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-    initSchema(db);
+  if (!globalWithDb._db) {
+    globalWithDb._db = new Database(DB_PATH);
+    globalWithDb._db.pragma('journal_mode = WAL');
+    globalWithDb._db.pragma('foreign_keys = ON');
+    initSchema(globalWithDb._db);
   }
-  return db;
+  return globalWithDb._db;
 }
 
 function initSchema(db: Database.Database) {
