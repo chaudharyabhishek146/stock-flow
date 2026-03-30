@@ -1,10 +1,8 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-
-type ActionResult = { error: string } | void;
-type Action = (_prevState: ActionResult, formData: FormData) => Promise<ActionResult>;
 
 type Product = {
   id: number;
@@ -18,15 +16,49 @@ type Product = {
 };
 
 export default function ProductForm({
-  action,
   product,
   title,
 }: {
-  action: Action;
   product?: Product;
   title: string;
 }) {
-  const [state, formAction, pending] = useActionState(action, undefined);
+  const router = useRouter();
+  const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
+
+  async function handleSubmit(e: React.BaseSyntheticEvent) {
+    e.preventDefault();
+    setError('');
+    setPending(true);
+
+    const form = new FormData(e.currentTarget as HTMLFormElement);
+
+    const url = product ? `/api/products/${product.id}` : '/api/products';
+    const method = product ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: form.get('name'),
+        sku: form.get('sku'),
+        description: form.get('description'),
+        quantity: form.get('quantity'),
+        costPrice: form.get('costPrice'),
+        sellingPrice: form.get('sellingPrice'),
+        lowStockThreshold: form.get('lowStockThreshold'),
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || 'Something went wrong.');
+      setPending(false);
+    } else {
+      router.push('/products');
+      router.refresh();
+    }
+  }
 
   return (
     <div className="max-w-xl">
@@ -39,12 +71,10 @@ export default function ProductForm({
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <form action={formAction} className="space-y-5">
-          {product && <input type="hidden" name="id" value={product.id} />}
-
-          {state?.error && (
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {error && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-              {state.error}
+              {error}
             </div>
           )}
 
@@ -72,7 +102,7 @@ export default function ProductForm({
                 type="text"
                 required
                 defaultValue={product?.sku}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 font-mono focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 placeholder="e.g. BTS-001"
               />
             </div>
@@ -143,7 +173,7 @@ export default function ProductForm({
                 name="description"
                 rows={3}
                 defaultValue={product?.description ?? ''}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
                 placeholder="Optional notes about this product"
               />
             </div>

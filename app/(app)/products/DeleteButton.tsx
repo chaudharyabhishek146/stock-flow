@@ -1,6 +1,7 @@
 'use client';
 
-import { deleteProduct } from '@/app/actions/products';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export default function DeleteButton({
   productId,
@@ -9,17 +10,24 @@ export default function DeleteButton({
   productId: number;
   productName: string;
 }) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+
   async function handleDelete() {
     if (!confirm(`Delete "${productName}"? This cannot be undone.`)) return;
-    await deleteProduct(productId);
+    setPending(true);
+
+    await fetch(`/api/products/${productId}`, { method: 'DELETE' });
+    router.refresh();
   }
 
   return (
     <button
       onClick={handleDelete}
-      className="text-red-500 hover:text-red-700 font-medium transition-colors"
+      disabled={pending}
+      className="text-red-500 hover:text-red-700 font-medium transition-colors disabled:opacity-50"
     >
-      Delete
+      {pending ? '…' : 'Delete'}
     </button>
   );
 }

@@ -1,11 +1,37 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { login } from '@/app/actions/auth';
 
 export default function LoginPage() {
-  const [state, action, pending] = useActionState(login, undefined);
+  const router = useRouter();
+  const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
+
+  async function handleSubmit(e: React.BaseSyntheticEvent) {
+    e.preventDefault();
+    setError('');
+    setPending(true);
+
+    const form = new FormData(e.currentTarget as HTMLFormElement);
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: form.get('email'),
+        password: form.get('password'),
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || 'Something went wrong.');
+      setPending(false);
+    } else {
+      router.push('/dashboard');
+    }
+  }
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
@@ -14,10 +40,10 @@ export default function LoginPage() {
         <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
       </div>
 
-      <form action={action} className="space-y-4">
-        {state?.error && (
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
           <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-            {state.error}
+            {error}
           </div>
         )}
 

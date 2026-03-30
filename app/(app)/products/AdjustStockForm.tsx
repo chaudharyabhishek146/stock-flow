@@ -1,26 +1,52 @@
 'use client';
 
-import { useActionState } from 'react';
-import { adjustStock } from '@/app/actions/products';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function AdjustStockForm({
   productId,
-  currentQty,
 }: {
   productId: number;
   currentQty: number;
 }) {
-  const [state, action, pending] = useActionState(adjustStock, undefined);
+  const router = useRouter();
+  const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
+
+  async function handleSubmit(e: React.BaseSyntheticEvent) {
+    e.preventDefault();
+    setError('');
+    setPending(true);
+
+    const form = new FormData(e.currentTarget as HTMLFormElement);
+    const adjustment = form.get('adjustment');
+
+    const res = await fetch(`/api/products/${productId}/adjust`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adjustment }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || 'Failed to adjust stock.');
+    } else {
+      (e.currentTarget as HTMLFormElement).reset();
+      router.refresh();
+    }
+    setPending(false);
+  }
 
   return (
-    <form action={action} className="flex items-center justify-end gap-1.5">
-      <input type="hidden" name="id" value={productId} />
+    <form onSubmit={handleSubmit} className="flex items-center justify-end gap-1.5">
       <input
         name="adjustment"
         type="number"
         placeholder="±0"
-        className="w-16 rounded border border-gray-300 px-2 py-1 text-xs text-center focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        title={state?.error}
+        title={error || undefined}
+        className={`w-16 rounded border px-2 py-1 text-xs text-gray-900 text-center focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+          error ? 'border-red-400' : 'border-gray-300'
+        }`}
       />
       <button
         type="submit"

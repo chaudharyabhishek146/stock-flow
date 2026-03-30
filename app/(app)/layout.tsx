@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { getOrgSettings } from '@/lib/data';
-import { logout } from '@/app/actions/auth';
+import LogoutButton from './LogoutButton';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -36,14 +36,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
         <div className="px-3 py-4 border-t border-gray-100">
           <p className="px-2 mb-2 text-xs text-gray-400 truncate">{session.email}</p>
-          <form action={logout}>
-            <button
-              type="submit"
-              className="w-full text-left px-2 py-1.5 text-sm text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
-            >
-              Sign out
-            </button>
-          </form>
+          <LogoutButton />
         </div>
       </aside>
 
