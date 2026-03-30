@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth';
 import { getProducts, getOrgSettings } from '@/lib/data';
 import DeleteButton from './DeleteButton';
 import AdjustStockForm from './AdjustStockForm';
+import SearchInput from './SearchInput';
+import { Suspense } from 'react';
 
 const PAGE_SIZE = 10;
 
@@ -55,14 +57,11 @@ export default async function ProductsPage({
       </div>
 
       {/* Search */}
-      <form method="GET" className="mb-2">
-        <input
-          name="q"
-          defaultValue={q}
-          placeholder="Search by name or SKU…"
-          className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        />
-      </form>
+      <div className="mb-2">
+        <Suspense fallback={null}>
+          <SearchInput />
+        </Suspense>
+      </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {filtered.length === 0 ? (
@@ -113,9 +112,13 @@ export default async function ProductsPage({
                         <div className="flex items-center justify-end gap-3">
                           <Link
                             href={`/products/${p.id}/edit`}
-                            className="text-indigo-600 hover:text-indigo-800 font-medium"
+                            title="Edit product"
+                            className="p-1.5 rounded text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                           >
-                            Edit
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
                           </Link>
                           <DeleteButton productId={p.id} productName={p.name} />
                         </div>
