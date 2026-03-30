@@ -45,7 +45,9 @@ export default async function ProductsPage({
           name="q"
           defaultValue={q}
           placeholder="Search by name or SKU…"
-          className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          // className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+
+          className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
       </form>
 
@@ -77,7 +79,7 @@ export default async function ProductsPage({
                     <td className="px-5 py-3 font-mono text-xs text-gray-500">{p.sku}</td>
                     <td className="px-5 py-3 text-right font-semibold text-gray-900">{p.quantity}</td>
                     <td className="px-5 py-3 text-right text-gray-500">
-                      {p.selling_price != null ? `$${p.selling_price.toFixed(2)}` : '—'}
+                      {p.selling_price != null ? `₹${p.selling_price.toLocaleString('en-IN')}` : '—'}
                     </td>
                     <td className="px-5 py-3 text-center">
                       {isLow ? (
